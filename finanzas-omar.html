@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finanzas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1e222b; --border:#2a2f3a;
+    --text:#e8eaed; --muted:#9aa3b2; --accent:#4f9dff; --green:#3ecf8e;
+    --red:#ff6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;}
+  #app{max-width:520px;margin:0 auto;padding:14px 14px 90px;position:relative;min-height:100vh;}
+  h1{font-size:18px;margin:2px 0 12px;display:flex;justify-content:space-between;align-items:center;}
+  .offline-badge{font-size:10px;padding:3px 8px;border-radius:10px;background:var(--card2);color:var(--muted);}
+  .offline-badge.off{background:#3a2222;color:var(--red);}
+  h2{font-size:14px;margin:0 0 8px;color:var(--muted);font-weight:600;}
+  .view{display:none;} .view.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{background:var(--card2);border-radius:12px;padding:12px;}
+  .stat .lbl{font-size:11px;color:var(--muted);}
+  .stat .val{font-size:17px;font-weight:700;margin-top:2px;}
+  .pos{color:var(--green);} .neg{color:var(--red);}
+  label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;}
+  input,select{width:100%;padding:10px;border-radius:9px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:14px;}
+  button{cursor:pointer;border:none;border-radius:9px;padding:10px 14px;font-size:14px;font-weight:600;}
+  .btn-primary{background:var(--accent);color:#fff;width:100%;margin-top:12px;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+  .row:last-child{border-bottom:none;}
+  .row .desc{font-size:13px;} .row .sub{font-size:11px;color:var(--muted);}
+  .amt{font-weight:700;font-size:14px;}
+  .pill{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--card2);color:var(--muted);margin-left:6px;}
+  .pill.pend{background:#3a2f1a;color:#f5c451;}
+  .del{color:var(--red);background:none;border:none;font-size:16px;padding:2px 6px;}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:16px 0;}
+  canvas{max-height:200px;}
+  .note{font-size:11px;color:var(--muted);margin-top:6px;}
+
+  /* WIDGET DE MICRÓFONO — botón flotante único, siempre visible */
+  .mic-fab{
+    position:fixed;bottom:78px;left:50%;transform:translateX(-50%);
+    width:64px;height:64px;border-radius:50%;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;font-size:26px;
+    box-shadow:0 6px 20px rgba(79,157,255,.4);z-index:20;border:none;
+  }
+  .mic-fab.listening{background:var(--red);animation:pulse 1s infinite;box-shadow:0 6px 20px rgba(255,107,107,.5);}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,107,107,.5);}70%{box-shadow:0 0 0 20px rgba(255,107,107,0);}100%{box-shadow:0 0 0 0 rgba(255,107,107,0);}}
+
+  .voice-overlay{
+    position:fixed;inset:0;background:rgba(10,11,15,.92);z-index:30;
+    display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;
+  }
+  .voice-overlay.show{display:flex;}
+  .voice-overlay .big-mic{width:90px;height:90px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:34px;animation:pulse 1s infinite;margin-bottom:18px;}
+  .voice-overlay .transcript{color:var(--text);font-size:16px;text-align:center;min-height:24px;margin-bottom:16px;max-width:340px;}
+  .voice-overlay .hint{color:var(--muted);font-size:12px;text-align:center;max-width:280px;}
+  .confirm-card{background:var(--card);border-radius:14px;padding:16px;width:100%;max-width:340px;margin-top:10px;}
+
+  /* BARRA INFERIOR — 3 iconos simples */
+  .navbar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:15;}
+  .navbtn{flex:1;text-align:center;padding:12px 0 10px;color:var(--muted);font-size:11px;}
+  .navbtn.active{color:var(--accent);}
+  .navbtn .ic{display:block;margin-bottom:2px;}
+  .icon{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+  .icon-lg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+  .brand-mark{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:1.5;vertical-align:-4px;margin-right:6px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1><svg class="brand-mark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 15.5c.5 1 1.5 1.5 2.7 1.5 1.7 0 2.8-.9 2.8-2.1 0-1.5-1.4-1.9-2.8-2.2-1.5-.3-2.8-.8-2.8-2.2 0-1.2 1.1-2.1 2.8-2.1 1.2 0 2.2.5 2.7 1.5" /><line x1="12" y1="6.5" x2="12" y2="17.5"/></svg>Mis Finanzas <span class="offline-badge" id="netBadge">guardado local</span></h1>
+
+  <!-- INICIO -->
+  <div class="view active" id="view-inicio">
+    <div class="grid2">
+      <div class="stat"><div class="lbl">Balance total</div><div class="val" id="stBalance">$0.00</div></div>
+      <div class="stat"><div class="lbl">Neto del mes</div><div class="val" id="stNeto">$0.00</div></div>
+    </div>
+    <div class="grid2">
+      <div class="stat"><div class="lbl">Ingresos del mes</div><div class="val pos" id="stIn">$0.00</div></div>
+      <div class="stat"><div class="lbl">Gastos del mes</div><div class="val neg" id="stOut">$0.00</div></div>
+    </div>
+    <div class="card">
+      <h2>Gasto por categoría</h2>
+      <canvas id="chartCat"></canvas>
+    </div>
+    <div class="card">
+      <h2>Últimos 6 meses</h2>
+      <canvas id="chartMonth"></canvas>
+    </div>
+    <div class="card" id="cutoffCard">
+      <h2>Fechas de corte</h2>
+      <div id="cutoffList" class="empty">Sin tarjetas de crédito registradas</div>
+    </div>
+    <div class="card">
+      <h2>Movimientos recientes</h2>
+      <div id="movListMini" class="empty">Sin movimientos aún</div>
+    </div>
+  </div>
+
+  <!-- CUENTAS -->
+  <div class="view" id="view-cuentas">
+    <div class="card">
+      <h2>Nueva cuenta</h2>
+      <label>Nombre</label>
+      <input type="text" id="aNombre" placeholder="ej. BBVA Débito, Efectivo, Stori">
+      <label>Tipo de cuenta</label>
+      <select id="aTipo">
+        <option value="efectivo">Efectivo</option>
+        <option value="ahorro">Cuenta de ahorro</option>
+        <option value="cheques">Cuenta de cheques/débito</option>
+        <option value="credito">Tarjeta de crédito</option>
+      </select>
+      <div id="creditoFields" style="display:none;">
+        <label>Día de corte (1-31)</label>
+        <input type="number" id="aCorte" min="1" max="31">
+        <label>Día límite de pago (1-31)</label>
+        <input type="number" id="aLimite" min="1" max="31">
+      </div>
+      <label>Balance inicial</label>
+      <input type="number" id="aBalance" step="0.01" value="0">
+      <button class="btn-primary" id="aSave">Crear cuenta</button>
+    </div>
+    <div class="card">
+      <h2>Mis cuentas</h2>
+      <div id="accList" class="empty">Sin cuentas registradas</div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="view" id="view-historial">
+    <div class="card">
+      <h2>Agregar movimiento manual</h2>
+      <label>Tipo</label>
+      <select id="mType"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select>
+      <label>Monto</label>
+      <input type="number" id="mMonto" step="0.01">
+      <label>Cuenta</label>
+      <select id="mCuenta"></select>
+      <label>Categoría</label>
+      <select id="mCategoria"></select>
+      <label>Fecha</label>
+      <input type="date" id="mFecha">
+      <label>Descripción</label>
+      <input type="text" id="mDesc">
+      <button class="btn-primary" id="mSave">Agregar</button>
+    </div>
+    <div class="card">
+      <h2>Historial completo</h2>
+      <div id="movList" class="empty">Sin movimientos aún</div>
+    </div>
+    <div class="card">
+      <h2>Respaldo (tus datos viven solo en este teléfono)</h2>
+      <button class="btn-ghost" style="width:100%;" id="btnExport"><svg class="icon" style="vertical-align:-5px;margin-right:6px;" viewBox="0 0 24 24"><path d="M20 15v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar respaldo (.json)</button>
+      <label style="margin-top:10px;">Restaurar desde un respaldo</label>
+      <input type="file" id="fileImport" accept=".json">
+      <div class="note">Como no hay nube, si cambias de teléfono o borras datos del navegador se pierde todo. Exporta de vez en cuando y guarda ese archivo en Drive o donde prefieras.</div>
+    </div>
+  </div>
+
+  <!-- WIDGET FLOTANTE DE VOZ: un solo toque abre el micrófono -->
+  <button class="mic-fab" id="micFab"><svg class="icon-lg" style="width:26px;height:26px;" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
+
+  <!-- BARRA INFERIOR -->
+  <div class="navbar">
+    <div class="navbtn active" data-tab="inicio"><span class="ic"><svg class="icon" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V19a1 1 0 0 0 1 1h2.5a1 1 0 0 0 1-1v-9"/></svg></span>Inicio</div>
+    <div class="navbtn" data-tab="cuentas"><span class="ic"><svg class="icon" viewBox="0 0 24 24"><polygon points="12 3 21 8 3 8"/><line x1="5" y1="8" x2="5" y2="19"/><line x1="9.5" y1="8" x2="9.5" y2="19"/><line x1="14.5" y1="8" x2="14.5" y2="19"/><line x1="19" y1="8" x2="19" y2="19"/><line x1="3" y1="21" x2="21" y2="21"/></svg></span>Cuentas</div>
+    <div class="navbtn" data-tab="historial"><span class="ic"><svg class="icon" viewBox="0 0 24 24"><line x1="8" y1="7" x2="20" y2="7"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="17" x2="20" y2="17"/><line x1="4" y1="7" x2="4.01" y2="7"/><line x1="4" y1="12" x2="4.01" y2="12"/><line x1="4" y1="17" x2="4.01" y2="17"/></svg></span>Historial</div>
+  </div>
+
+  <!-- OVERLAY DE VOZ -->
+  <div class="voice-overlay" id="voiceOverlay">
+    <div class="big-mic" id="bigMic"><svg class="icon-lg" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></div>
+    <div class="transcript" id="transcriptText">Di algo como:<br>"gasté 250 en comida con la tarjeta BBVA"</div>
+    <div class="hint" id="voiceHint">Escuchando...</div>
+    <div class="confirm-card" id="voiceForm" style="display:none;">
+      <label>Tipo</label>
+      <select id="vType"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select>
+      <label>Monto</label>
+      <input type="number" id="vMonto" step="0.01">
+      <label>Cuenta</label>
+      <select id="vCuenta"></select>
+      <label>Categoría</label>
+      <select id="vCategoria"></select>
+      <label>Descripción</label>
+      <input type="text" id="vDesc">
+      <button class="btn-primary" id="vSave">Guardar</button>
+      <button class="btn-ghost" style="width:100%;margin-top:8px;" id="vCancel">Cancelar</button>
+    </div>
+    <div style="margin-top:14px;" id="manualBlock">
+      <label style="color:var(--muted);">Sin micrófono? escribe la frase</label>
+      <input type="text" id="manualText" placeholder="ej. recibí 1500 de sueldo en Mercado Pago" style="max-width:300px;">
+      <button class="btn-ghost" style="width:100%;max-width:300px;margin-top:8px;" id="manualParse">Interpretar</button>
+      <button class="btn-ghost" style="width:100%;max-width:300px;margin-top:8px;" id="closeOverlay">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATS_GASTO = ["Comida","Transporte","Entretenimiento","Salud","Servicios","Renta","Pago de tarjeta","Educación","Ropa","Ahorro","Otros"];
+const CATS_INGRESO = ["Sueldo","Venta","Regalo","Reembolso","Otro ingreso"];
+let accounts = [];
+let transactions = [];
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function money(n){ return "$"+Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function updateNetBadge(){
+  const badge = document.getElementById('netBadge');
+  badge.textContent = 'guardado local';
+  badge.classList.remove('off');
+}
+
+// Todo se guarda con localStorage: vive en ESTE navegador/teléfono, sin internet.
+async function loadData(){
+  try{ const raw = localStorage.getItem('finanzas_accounts'); accounts = raw ? JSON.parse(raw) : []; }catch(e){ accounts = []; }
+  try{ const raw = localStorage.getItem('finanzas_transactions'); transactions = raw ? JSON.parse(raw) : []; }catch(e){ transactions = []; }
+  renderAll();
+}
+async function saveAccounts(){
+  try{ localStorage.setItem('finanzas_accounts', JSON.stringify(accounts)); }
+  catch(e){ console.error('no se pudo guardar cuentas', e); alert('No se pudo guardar. ¿El navegador tiene el almacenamiento lleno o en modo privado?'); }
+}
+async function saveTransactions(){
+  try{ localStorage.setItem('finanzas_transactions', JSON.stringify(transactions)); }
+  catch(e){ console.error('no se pudo guardar movimientos', e); }
+}
+
+// RESPALDO MANUAL — exportar/importar un archivo .json
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const data = { accounts, transactions, exportadoEl: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'respaldo-finanzas-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('fileImport').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!confirm('Esto reemplaza tus datos actuales con los del respaldo. ¿Continuar?')) return;
+      accounts = data.accounts || [];
+      transactions = data.transactions || [];
+      await saveAccounts(); await saveTransactions();
+      renderAll();
+      alert('Respaldo restaurado.');
+    }catch(err){ alert('Ese archivo no se pudo leer, revisa que sea un respaldo válido.'); }
+  };
+  reader.readAsText(file);
+});
+
+// NAV
+document.querySelectorAll('.navbtn').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-'+t.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('aTipo').addEventListener('change', e=>{
+  document.getElementById('creditoFields').style.display = e.target.value==='credito' ? 'block' : 'none';
+});
+
+function fillAccountSelects(){
+  const opts = accounts.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+  ['mCuenta','vCuenta'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = opts || '<option value="">(crea una cuenta primero)</option>';
+    if(cur) sel.value = cur;
+  });
+}
+function fillCategorySelects(){
+  ['mCategoria','vCategoria'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const type = id==='mCategoria' ? document.getElementById('mType').value : document.getElementById('vType').value;
+    const list = type==='ingreso' ? CATS_INGRESO : CATS_GASTO;
+    sel.innerHTML = list.map(c=>`<option value="${c}">${c}</option>`).join('');
+  });
+}
+document.getElementById('mType').addEventListener('change', fillCategorySelects);
+document.getElementById('vType').addEventListener('change', fillCategorySelects);
+
+document.getElementById('aSave').addEventListener('click', async ()=>{
+  const nombre = document.getElementById('aNombre').value.trim();
+  if(!nombre) return alert('Ponle un nombre a la cuenta');
+  const tipo = document.getElementById('aTipo').value;
+  const acc = {
+    id: uid(), nombre, tipo,
+    balance: parseFloat(document.getElementById('aBalance').value)||0,
+    corte: tipo==='credito' ? parseInt(document.getElementById('aCorte').value)||null : null,
+    limite: tipo==='credito' ? parseInt(document.getElementById('aLimite').value)||null : null
+  };
+  accounts.push(acc);
+  await saveAccounts();
+  document.getElementById('aNombre').value=''; document.getElementById('aBalance').value='0';
+  renderAll();
+});
+
+function tipoLabel(t){ return {efectivo:'Efectivo',ahorro:'Ahorro',cheques:'Débito/Cheques',credito:'Crédito'}[t]||t; }
+
+function renderAccounts(){
+  const el = document.getElementById('accList');
+  if(!accounts.length){ el.className='empty'; el.textContent='Sin cuentas registradas'; return; }
+  el.className='';
+  el.innerHTML = accounts.map(a=>`
+    <div class="row">
+      <div><div class="desc">${a.nombre}<span class="pill">${tipoLabel(a.tipo)}</span></div>
+      <div class="sub">${a.tipo==='credito' && a.corte ? 'Corte: día '+a.corte+(a.limite?' · Pago límite: día '+a.limite:'') : ''}</div></div>
+      <div style="display:flex;align-items:center;">
+        <span class="amt">${money(a.balance)}</span>
+        <button class="del" onclick="delAccount('${a.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+window.delAccount = async function(id){
+  if(!confirm('¿Eliminar esta cuenta? No se borran sus movimientos históricos.')) return;
+  accounts = accounts.filter(a=>a.id!==id);
+  await saveAccounts(); renderAll();
+};
+
+function applyBalance(tx, sign){
+  const acc = accounts.find(a=>a.id===tx.cuentaId);
+  if(!acc) return;
+  const delta = tx.tipo==='ingreso' ? tx.monto : -tx.monto;
+  acc.balance += sign*delta;
+}
+async function addTransaction(tx){
+  transactions.push(tx);
+  applyBalance(tx, 1);
+  await saveAccounts(); await saveTransactions();
+  renderAll();
+}
+document.getElementById('mSave').addEventListener('click', async ()=>{
+  const monto = parseFloat(document.getElementById('mMonto').value);
+  const cuentaId = document.getElementById('mCuenta').value;
+  if(!monto || monto<=0) return alert('Pon un monto válido');
+  if(!cuentaId) return alert('Selecciona o crea una cuenta');
+  const tx = {
+    id: uid(), tipo: document.getElementById('mType').value, monto,
+    cuentaId, categoria: document.getElementById('mCategoria').value,
+    fecha: document.getElementById('mFecha').value || new Date().toISOString().slice(0,10),
+    desc: document.getElementById('mDesc').value.trim()
+  };
+  await addTransaction(tx);
+  document.getElementById('mMonto').value=''; document.getElementById('mDesc').value='';
+});
+window.delTransaction = async function(id){
+  const tx = transactions.find(t=>t.id===id);
+  if(!tx) return;
+  applyBalance(tx, -1);
+  transactions = transactions.filter(t=>t.id!==id);
+  await saveAccounts(); await saveTransactions();
+  renderAll();
+};
+
+function txRow(t){
+  const acc = accounts.find(a=>a.id===t.cuentaId);
+  return `<div class="row">
+    <div><div class="desc">${t.desc||t.categoria}<span class="pill">${t.categoria}</span></div>
+    <div class="sub">${t.fecha} · ${acc?acc.nombre:'—'}</div></div>
+    <div style="display:flex;align-items:center;">
+      <span class="amt ${t.tipo==='ingreso'?'pos':'neg'}">${t.tipo==='ingreso'?'+':'-'}${money(t.monto)}</span>
+      <button class="del" onclick="delTransaction('${t.id}')">✕</button>
+    </div>
+  </div>`;
+}
+function renderTransactions(){
+  const el = document.getElementById('movList');
+  const elMini = document.getElementById('movListMini');
+  if(!transactions.length){
+    el.className='empty'; el.textContent='Sin movimientos aún';
+    elMini.className='empty'; elMini.textContent='Sin movimientos aún';
+    return;
+  }
+  const sorted = [...transactions].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  el.className=''; el.innerHTML = sorted.slice(0,80).map(txRow).join('');
+  elMini.className=''; elMini.innerHTML = sorted.slice(0,5).map(txRow).join('');
+}
+
+let chartCat, chartMonth;
+function renderDashboard(){
+  const totalBalance = accounts.reduce((s,a)=>s+a.balance,0);
+  const now = new Date();
+  const ym = now.toISOString().slice(0,7);
+  const monthTx = transactions.filter(t=>t.fecha.startsWith(ym));
+  const inSum = monthTx.filter(t=>t.tipo==='ingreso').reduce((s,t)=>s+t.monto,0);
+  const outSum = monthTx.filter(t=>t.tipo==='gasto').reduce((s,t)=>s+t.monto,0);
+  document.getElementById('stBalance').textContent = money(totalBalance);
+  document.getElementById('stIn').textContent = money(inSum);
+  document.getElementById('stOut').textContent = money(outSum);
+  const neto = document.getElementById('stNeto');
+  neto.textContent = money(inSum-outSum);
+  neto.className = 'val ' + (inSum-outSum>=0?'pos':'neg');
+
+  const catMap = {};
+  monthTx.filter(t=>t.tipo==='gasto').forEach(t=>{ catMap[t.categoria]=(catMap[t.categoria]||0)+t.monto; });
+  const catLabels = Object.keys(catMap);
+  const ctx1 = document.getElementById('chartCat').getContext('2d');
+  if(chartCat) chartCat.destroy();
+  chartCat = new Chart(ctx1, {
+    type:'bar',
+    data:{ labels: catLabels.length?catLabels:['Sin datos'], datasets:[{ data: catLabels.length?Object.values(catMap):[0], backgroundColor:'#4f9dff' }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#9aa3b2'}}, y:{ticks:{color:'#9aa3b2'}} } }
+  });
+
+  const months = [];
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(), now.getMonth()-i, 1); months.push(d.toISOString().slice(0,7)); }
+  const inArr = months.map(m=>transactions.filter(t=>t.fecha.startsWith(m)&&t.tipo==='ingreso').reduce((s,t)=>s+t.monto,0));
+  const outArr = months.map(m=>transactions.filter(t=>t.fecha.startsWith(m)&&t.tipo==='gasto').reduce((s,t)=>s+t.monto,0));
+  const ctx2 = document.getElementById('chartMonth').getContext('2d');
+  if(chartMonth) chartMonth.destroy();
+  chartMonth = new Chart(ctx2, {
+    type:'line',
+    data:{ labels: months, datasets:[
+      { label:'Ingresos', data:inArr, borderColor:'#3ecf8e', backgroundColor:'transparent' },
+      { label:'Gastos', data:outArr, borderColor:'#ff6b6b', backgroundColor:'transparent' }
+    ]},
+    options:{ plugins:{legend:{labels:{color:'#e8eaed'}}}, scales:{ x:{ticks:{color:'#9aa3b2'}}, y:{ticks:{color:'#9aa3b2'}} } }
+  });
+
+  const creditAccs = accounts.filter(a=>a.tipo==='credito' && a.corte);
+  const cutEl = document.getElementById('cutoffList');
+  if(!creditAccs.length){ cutEl.className='empty'; cutEl.textContent='Sin tarjetas de crédito registradas'; }
+  else{
+    cutEl.className='';
+    cutEl.innerHTML = creditAccs.map(a=>`<div class="row"><div class="desc">${a.nombre}</div><div class="sub">Corte: día ${a.corte}${a.limite?' · Pago límite: día '+a.limite:''}</div></div>`).join('');
+  }
+}
+
+function renderAll(){
+  fillAccountSelects();
+  fillCategorySelects();
+  renderAccounts();
+  renderTransactions();
+  renderDashboard();
+  updateNetBadge();
+}
+
+// VOZ — WIDGET DE UN SOLO TOQUE
+let recognition = null;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SpeechRecognition){
+  recognition = new SpeechRecognition();
+  recognition.lang = 'es-MX';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+}
+const micFab = document.getElementById('micFab');
+const overlay = document.getElementById('voiceOverlay');
+const bigMic = document.getElementById('bigMic');
+
+function openVoiceOverlay(){
+  overlay.classList.add('show');
+  document.getElementById('voiceForm').style.display='none';
+  document.getElementById('manualBlock').style.display='block';
+  document.getElementById('transcriptText').innerHTML = 'Di algo como:<br>"gasté 250 en comida con la tarjeta BBVA"';
+  if(recognition){
+    document.getElementById('voiceHint').textContent = 'Escuchando...';
+    bigMic.style.display='flex';
+    try{ recognition.start(); }catch(e){}
+  }else{
+    document.getElementById('voiceHint').textContent = 'Tu navegador no tiene micrófono por voz, escribe abajo';
+    bigMic.style.display='none';
+  }
+}
+micFab.addEventListener('click', openVoiceOverlay);
+document.getElementById('closeOverlay').addEventListener('click', ()=>{
+  overlay.classList.remove('show');
+  if(recognition){ try{ recognition.stop(); }catch(e){} }
+});
+if(recognition){
+  recognition.onresult = (e)=>{
+    const text = e.results[0][0].transcript;
+    document.getElementById('transcriptText').textContent = '"'+text+'"';
+    document.getElementById('voiceHint').textContent = '';
+    parseVoiceText(text);
+  };
+  recognition.onerror = ()=>{ document.getElementById('voiceHint').textContent='No te escuché bien, intenta otra vez o escribe abajo.'; };
+}
+document.getElementById('manualParse').addEventListener('click', ()=>{
+  const text = document.getElementById('manualText').value.trim();
+  if(!text) return;
+  document.getElementById('transcriptText').textContent = '"'+text+'"';
+  parseVoiceText(text);
+});
+
+function parseVoiceText(text){
+  const low = text.toLowerCase();
+  const numMatch = low.match(/(\d+(?:[.,]\d+)?)/);
+  const monto = numMatch ? parseFloat(numMatch[1].replace(',','.')) : '';
+
+  const gastoWords = ['gasté','gasto','pagué','pague','compré','compre','salió','salio'];
+  const ingresoWords = ['recibí','recibi','ingreso','deposité','deposite','entró','entro','cobré','cobre','me pagaron'];
+  let tipo = 'gasto';
+  if(ingresoWords.some(w=>low.includes(w))) tipo = 'ingreso';
+  else if(gastoWords.some(w=>low.includes(w))) tipo = 'gasto';
+
+  let cuentaId = '';
+  for(const a of accounts){
+    if(low.includes(a.nombre.toLowerCase())){ cuentaId = a.id; break; }
+  }
+
+  const catList = tipo==='ingreso' ? CATS_INGRESO : CATS_GASTO;
+  let categoria = catList[catList.length-1];
+  const catKeywords = {
+    'Comida':['comida','comer','restaurante','super','supermercado'],
+    'Transporte':['transporte','gasolina','uber','camión','camion','pasaje','bote','lancha'],
+    'Entretenimiento':['entretenimiento','cine','salida','fiesta'],
+    'Salud':['salud','doctor','medicina','farmacia'],
+    'Servicios':['servicio','luz','agua','internet','teléfono','telefono'],
+    'Renta':['renta','alquiler'],
+    'Pago de tarjeta':['pago de tarjeta','pagar tarjeta'],
+    'Sueldo':['sueldo','nómina','nomina','quincena'],
+    'Venta':['venta','vendí','vendi','cliente','aplo']
+  };
+  for(const [cat,words] of Object.entries(catKeywords)){
+    if(words.some(w=>low.includes(w)) && catList.includes(cat)){ categoria = cat; break; }
+  }
+
+  document.getElementById('vType').value = tipo;
+  fillCategorySelects();
+  document.getElementById('vMonto').value = monto;
+  if(cuentaId) document.getElementById('vCuenta').value = cuentaId;
+  document.getElementById('vCategoria').value = categoria;
+  document.getElementById('vDesc').value = text;
+  document.getElementById('manualBlock').style.display='none';
+  document.getElementById('voiceForm').style.display = 'block';
+}
+
+document.getElementById('vCancel').addEventListener('click', ()=>{
+  overlay.classList.remove('show');
+});
+document.getElementById('vSave').addEventListener('click', async ()=>{
+  const monto = parseFloat(document.getElementById('vMonto').value);
+  const cuentaId = document.getElementById('vCuenta').value;
+  if(!monto || monto<=0) return alert('Revisa el monto');
+  if(!cuentaId) return alert('Selecciona una cuenta');
+  const tx = {
+    id: uid(), tipo: document.getElementById('vType').value, monto,
+    cuentaId, categoria: document.getElementById('vCategoria').value,
+    fecha: new Date().toISOString().slice(0,10),
+    desc: document.getElementById('vDesc').value.trim()
+  };
+  await addTransaction(tx);
+  overlay.classList.remove('show');
+  document.getElementById('manualText').value='';
+});
+
+loadData();
+</script>
+</body>
+</html>

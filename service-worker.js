@@ -6,7 +6,7 @@
 // en la MISMA carpeta (la raíz de tu GitHub Pages), para que el registro
 // "service-worker.js" (ruta relativa) lo encuentre.
 
-const CACHE_VERSION = 'finanzas-v3';
+const CACHE_VERSION = 'finanzas-v4';
 const APP_SHELL = [
   './',
   './index.html',

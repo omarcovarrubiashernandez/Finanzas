@@ -133,9 +133,12 @@
         <input type="number" id="aCorte" min="1" max="31">
         <label>Día límite de pago (1-31)</label>
         <input type="number" id="aLimite" min="1" max="31">
+        <label>Límite de crédito (monto total de la tarjeta)</label>
+        <input type="number" id="aLimiteCredito" step="0.01" placeholder="ej. 15000">
       </div>
-      <label>Balance inicial</label>
+      <label id="aBalanceLabel">Balance inicial</label>
       <input type="number" id="aBalance" step="0.01" value="0">
+      <div class="note" id="aBalanceNote" style="display:none;">Pon cuánto debes AHORA MISMO en esa tarjeta (no el límite). La app calculará solita cuánto te queda disponible.</div>
       <button class="btn-primary" id="aSave">Crear cuenta</button>
     </div>
     <div class="card">
@@ -289,7 +292,10 @@ document.querySelectorAll('.navbtn').forEach(t=>{
 });
 
 document.getElementById('aTipo').addEventListener('change', e=>{
-  document.getElementById('creditoFields').style.display = e.target.value==='credito' ? 'block' : 'none';
+  const esCredito = e.target.value==='credito';
+  document.getElementById('creditoFields').style.display = esCredito ? 'block' : 'none';
+  document.getElementById('aBalanceLabel').textContent = esCredito ? 'Deuda actual (lo que ya debes)' : 'Balance inicial';
+  document.getElementById('aBalanceNote').style.display = esCredito ? 'block' : 'none';
 });
 
 function fillAccountSelects(){
@@ -316,33 +322,51 @@ document.getElementById('aSave').addEventListener('click', async ()=>{
   const nombre = document.getElementById('aNombre').value.trim();
   if(!nombre) return alert('Ponle un nombre a la cuenta');
   const tipo = document.getElementById('aTipo').value;
+  const limiteCredito = tipo==='credito' ? (parseFloat(document.getElementById('aLimiteCredito').value)||0) : null;
+  // En tarjetas de crédito, el campo "aBalance" captura la DEUDA actual;
+  // internamente seguimos guardando "balance" = crédito disponible, para que
+  // los gastos lo bajen y los pagos lo suban, como una cuenta normal.
+  const deudaInicial = parseFloat(document.getElementById('aBalance').value)||0;
   const acc = {
     id: uid(), nombre, tipo,
-    balance: parseFloat(document.getElementById('aBalance').value)||0,
+    balance: tipo==='credito' ? (limiteCredito - deudaInicial) : deudaInicial,
     corte: tipo==='credito' ? parseInt(document.getElementById('aCorte').value)||null : null,
-    limite: tipo==='credito' ? parseInt(document.getElementById('aLimite').value)||null : null
+    limite: tipo==='credito' ? parseInt(document.getElementById('aLimite').value)||null : null,
+    limiteCredito: tipo==='credito' ? limiteCredito : null
   };
   accounts.push(acc);
   await saveAccounts();
   document.getElementById('aNombre').value=''; document.getElementById('aBalance').value='0';
+  document.getElementById('aLimiteCredito').value='';
   renderAll();
 });
 
 function tipoLabel(t){ return {efectivo:'Efectivo',ahorro:'Ahorro',cheques:'Débito/Cheques',credito:'Crédito'}[t]||t; }
+// Para tarjetas de crédito con límite guardado, calcula cuánto debes.
+// (balance interno = crédito disponible; deuda = límite - disponible)
+function creditDebt(a){ return (a.tipo==='credito' && a.limiteCredito) ? (a.limiteCredito - a.balance) : null; }
 
 function renderAccounts(){
   const el = document.getElementById('accList');
   if(!accounts.length){ el.className='empty'; el.textContent='Sin cuentas registradas'; return; }
   el.className='';
-  el.innerHTML = accounts.map(a=>`
+  el.innerHTML = accounts.map(a=>{
+    const debe = creditDebt(a);
+    const subInfo = a.tipo==='credito' && a.corte ? 'Corte: día '+a.corte+(a.limite?' · Pago límite: día '+a.limite:'') : '';
+    const subLimite = a.tipo==='credito' && a.limiteCredito ? (subInfo?' · ':'')+'Límite '+money(a.limiteCredito) : '';
+    const rightHtml = debe!==null
+      ? `<div style="text-align:right;"><div class="amt neg">Debes ${money(debe)}</div><div class="sub">${money(a.balance)} disponible</div></div>`
+      : `<span class="amt">${money(a.balance)}</span>`;
+    return `
     <div class="row">
       <div class="rowLeft"><div class="desc">${a.nombre}<span class="pill">${tipoLabel(a.tipo)}</span></div>
-      <div class="sub">${a.tipo==='credito' && a.corte ? 'Corte: día '+a.corte+(a.limite?' · Pago límite: día '+a.limite:'') : ''}</div></div>
+      <div class="sub">${subInfo}${subLimite}</div></div>
       <div class="rowRight">
-        <span class="amt">${money(a.balance)}</span>
+        ${rightHtml}
         <button class="del" onclick="delAccount('${a.id}')">✕</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 window.delAccount = async function(id){
   if(!confirm('¿Eliminar esta cuenta? No se borran sus movimientos históricos.')) return;
@@ -455,7 +479,11 @@ function renderDashboard(){
   if(!creditAccs.length){ cutEl.className='empty'; cutEl.textContent='Sin tarjetas de crédito registradas'; }
   else{
     cutEl.className='';
-    cutEl.innerHTML = creditAccs.map(a=>`<div class="row"><div class="rowLeft"><div class="desc">${a.nombre}</div><div class="sub">Corte: día ${a.corte}${a.limite?' · Pago límite: día '+a.limite:''}</div></div></div>`).join('');
+    cutEl.innerHTML = creditAccs.map(a=>{
+      const debe = creditDebt(a);
+      const rightHtml = debe!==null ? `<div class="rowRight"><div style="text-align:right;"><div class="amt neg">${money(debe)}</div><div class="sub">de ${money(a.limiteCredito)}</div></div></div>` : '';
+      return `<div class="row"><div class="rowLeft"><div class="desc">${a.nombre}</div><div class="sub">Corte: día ${a.corte}${a.limite?' · Pago límite: día '+a.limite:''}</div></div>${rightHtml}</div>`;
+    }).join('');
   }
 }
 

@@ -514,7 +514,10 @@ function openVoiceOverlay(){
   document.getElementById('voiceForm').style.display='none';
   document.getElementById('manualBlock').style.display='block';
   document.getElementById('transcriptText').innerHTML = 'Di algo como:<br>"gasté 250 en comida con la tarjeta BBVA"';
-  if(recognition){
+  if(!navigator.onLine){
+    document.getElementById('voiceHint').textContent = 'Sin conexión: el micrófono necesita internet. Escribe la frase aquí abajo.';
+    bigMic.style.display='none';
+  }else if(recognition){
     document.getElementById('voiceHint').textContent = 'Escuchando...';
     bigMic.style.display='flex';
     try{ recognition.start(); }catch(e){}
@@ -523,7 +526,12 @@ function openVoiceOverlay(){
     bigMic.style.display='none';
   }
 }
-micFab.addEventListener('click', openVoiceOverlay);
+micFab.addEventListener('click', ()=>{
+  if(!navigator.onLine){
+    alert('Sin conexión: el micrófono necesita internet.\nSe abrirá el cuadro para escribir la frase a mano, funciona igual sin internet.');
+  }
+  openVoiceOverlay();
+});
 document.getElementById('closeOverlay').addEventListener('click', ()=>{
   overlay.classList.remove('show');
   if(recognition){ try{ recognition.stop(); }catch(e){} }
